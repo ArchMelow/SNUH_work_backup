@@ -1,0 +1,9 @@
+numpy
+pysimplegui
+pandas
+pydicom
+matplotlib
+nibabel
+scikit-image
+scipy
+openpyxl
