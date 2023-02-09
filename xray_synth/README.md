@@ -33,7 +33,7 @@ The directories including the patient's DICOM files and labels must have the fol
 ## Actual Performance (Images)
 The patient number and other sensitive informations of the patient have been annonymized.
 
-Below is the image of the program executed (Rotation by axial : 0 degrees, sagittal : 90 degrees, coronal : 0 degrees) 
+Below is the image of the program executed **(Rotation by axial : 0 degrees, sagittal : 90 degrees, coronal : 0 degrees)** 
 
 
 ![Alt text](./outlook.jpg "DRR Generated")
