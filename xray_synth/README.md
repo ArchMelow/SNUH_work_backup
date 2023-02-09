@@ -35,6 +35,8 @@ The patient number and other sensitive informations of the patient have been ann
 
 Below is the image of the program executed (Rotation by axial : 0 degrees, sagittal : 90 degrees, coronal : 0 degrees) 
 ![Alt text](./outlook.jpg "DRR Generated")
+
 Other combinations of rotation is also possible.
+
 Fast rotation method took 1.3742 seconds.
 ![Alt text](./performance.jpg "Took 1.3742 secs")
