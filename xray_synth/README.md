@@ -26,7 +26,7 @@ those views and create AP and Lateral viewed x-ray for themselves. (In my case, 
 ## Prerequisites
 The directories including the patient's DICOM files and labels must have the following hierarchy.
 
-![Alt text](./file_hier.jpg "file hierarchy")                   
+![Alt text](./file_hier.JPG "file hierarchy")                   
 
 **The code of the part handling label files is obsolete for the usage of this program, so you may remove that part and run the program for convenience.**
 
