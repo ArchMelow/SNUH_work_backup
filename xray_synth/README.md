@@ -26,16 +26,15 @@ those views and create AP and Lateral viewed x-ray for themselves. (In my case, 
 ## Prerequisites
 The directories including the patient's DICOM files and labels must have the following hierarchy.
 
-.
-├── folder_1 (name : patient number) ├────────────────────────├──(dicom files)                   
-├── folder_2 (name : patient number) ├── (same as above)      ├── stor ├── 3D_Legion***.xlsx
-├── ...                              ...                               ├── label files (nii.gz)
-├── folder_n (name : patient number) ├── (same as above)                   
+![Alt text](./file_hier.jpg "file hierarchy")                   
 
 **The code of the part handling label files is obsolete for the usage of this program, so you may remove that part and run the program for convenience.**
 
 ## Actual Performance (Images)
 The patient number and other sensitive informations of the patient have been annonymized.
 
+Below is the image of the program executed (Rotation by axial : 0 degrees, sagittal : 90 degrees, coronal : 0 degrees) 
 ![Alt text](./outlook.jpg "DRR Generated")
+Other combinations of rotation is also possible.
+Fast rotation method took 1.3742 seconds.
 ![Alt text](./performance.jpg "Took 1.3742 secs")
