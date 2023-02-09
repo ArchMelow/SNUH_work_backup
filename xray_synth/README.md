@@ -42,6 +42,6 @@ Below is the image of the program executed **(Rotation by axial : 0 degrees, sag
 Other combinations of rotation is also possible.
 
 
-Fast rotation method took 1.3742 seconds.
+Fast rotation method took 1.3742 seconds in RTX 3070 + Intel Core i7 3.8GHz Octa-Core System.
 
 ![Alt text](./performance.JPG "Took 1.3742 secs")
