@@ -1,5 +1,10 @@
 # Synthetic X-Ray Image Generator (Digitally Reconstructed Radiograph Generator) supported in Korean
 
+**UPDATED!!**
+(2.13.2023) + Removed requirements for the input directory formats; automatically scans DICOM files if parent folder is selected.
+            + beta functionality to display AP X-Ray Label generated as nii.gz files by other softwares.
+
+
 ## Abstract
 This is a simple DRR generator programmed by PySimpleGUI. The main idea of this program to generate a satisfying quality of DRR is to :
 1) Stack DICOM images (512 x 512) by the z-axis and acquire a 3d image.
