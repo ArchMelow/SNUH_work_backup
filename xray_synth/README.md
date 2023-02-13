@@ -1,8 +1,11 @@
 # Synthetic X-Ray Image Generator (Digitally Reconstructed Radiograph Generator) supported in Korean
 
 **UPDATED!!**
-(2.13.2023) + Removed requirements for the input directory formats; automatically scans DICOM files if parent folder is selected.
-            + beta functionality to display AP X-Ray Label generated as nii.gz files by other softwares.
+(2.13.2023) 
+
++ Removed requirements for the input directory formats; automatically scans DICOM files if parent folder is selected.
+
++ beta functionality to display AP X-Ray Label generated as nii.gz files by other softwares.
 
 
 ## Abstract
