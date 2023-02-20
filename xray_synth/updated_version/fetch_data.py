@@ -122,8 +122,9 @@ def return_patient_info_as_dict(path_arg) :
         return None
 
     # Only use consistently (512, 512) shaped images.
+    # Fixed : other shapes could be used as well.
 
-    pat_ids = [(pdcm.dcmread(data))[0x0010, 0x0020].value for data in all_files if pdcm.dcmread(data).pixel_array.shape == (512, 512)]
+    pat_ids = [(pdcm.dcmread(data))[0x0010, 0x0020].value for data in all_files]
 
     # Couldn't find (512, 512) image or all the images are invalid, return None.
 
@@ -135,7 +136,7 @@ def return_patient_info_as_dict(path_arg) :
 
     if set(pat_ids) == {'ANONYMIZED'} :
         print('data are anonymized. setting ID as \'ANONYMIZED\'..')
-        dicom_files = sorted([f for f in all_files])
+        all_dicom_files = sorted([f for f in all_files])
         
 
     else :
@@ -144,7 +145,7 @@ def return_patient_info_as_dict(path_arg) :
         
         # If the full file path includes max_slices_id, include the path as a required dicom file
 
-        dicom_files = sorted([f for f in all_files if max_slices_id in f.split('\\')])
+        all_dicom_files = sorted([f for f in all_files if max_slices_id in f.split('\\')])
 
         
     # label nii.gz 파일들을 label_files list에 저장한다.
@@ -152,7 +153,14 @@ def return_patient_info_as_dict(path_arg) :
     label_files = return_label_files_as_list(str([f for f in Path(path_arg).rglob('3DView*')][0]))
     
 
+    shapes = Counter([pdcm.dcmread(f).pixel_array.shape for f in all_dicom_files])
+    max_shape = max(shapes)
+    print(max_shape)
+
+    dicom_files = [f for f in all_dicom_files if pdcm.dcmread(f).pixel_array.shape == max_shape]
+
     # 마지막으로 모든 dicom file들의 pixel array 들 shape은 서로 같으므로, 첫번째 pixel map의 shape를 전체를 대표하는 shape으로 가져온다.
+    # 꼭 그렇다고 할 수는 없다. dicom file들의 shape가 서로 다를 수 있으므로, 가장 자주 나타나는 shape인 것만 골라서 dicom_files로 넣어준다.
     #assert len(dicom_files) != 0
     dicom_image_shape = pdcm.dcmread(dicom_files[0]).pixel_array.shape
 
