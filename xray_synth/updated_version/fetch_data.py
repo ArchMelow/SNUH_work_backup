@@ -117,7 +117,7 @@ def return_patient_info_as_dict(path_arg) :
 
     # 서로 다른 환자 번호를 가진 dicom file들 중 가장 slice 수가 많은 환자 데이터를 골라낸다.
 
-    elif len(all_files) > 650 :
+    elif len(all_files) > 1200 :
         print('Too many DICOM files, try selecting another directory.')
         return None
 
@@ -127,33 +127,30 @@ def return_patient_info_as_dict(path_arg) :
 
     # Couldn't find (512, 512) image or all the images are invalid, return None.
 
+    # temporary experimental fix : if the images are anonymized, assume all the data are anonymized.
+        
+
     if not pat_ids :
         return None
 
-    ids = Counter(pat_ids)
-    
-    max_slices_id = max(ids)
-    #print(max_slices_id)
+    if set(pat_ids) == {'ANONYMIZED'} :
+        print('data are anonymized. setting ID as \'ANONYMIZED\'..')
+        dicom_files = sorted([f for f in all_files])
+        
 
-    # If the full file path includes max_slices_id, include the path as a required dicom file
+    else :
+        ids = Counter(pat_ids)
+        max_slices_id = max(ids)
+        
+        # If the full file path includes max_slices_id, include the path as a required dicom file
 
-    #print(all_files[0].split('\\'))
+        dicom_files = sorted([f for f in all_files if max_slices_id in f.split('\\')])
 
-    dicom_files = sorted([f for f in all_files if max_slices_id in f.split('\\')])
-    #print(dicom_files)
-
-    
-    #debugging
-    #print('saved dicom files path : ', dicom_files)
-
+        
     # label nii.gz 파일들을 label_files list에 저장한다.
     #print([f for f in Path(path_arg).rglob('3DView*')])
     label_files = return_label_files_as_list(str([f for f in Path(path_arg).rglob('3DView*')][0]))
- 
-    #label_files = return_label_files_as_list(glob(os.path.join(used_dirpath, 'stor', 'results', '3DView*'))[0])
     
-    #debugging
-    #print('label files : ', label_files)
 
     # 마지막으로 모든 dicom file들의 pixel array 들 shape은 서로 같으므로, 첫번째 pixel map의 shape를 전체를 대표하는 shape으로 가져온다.
     #assert len(dicom_files) != 0
@@ -229,10 +226,10 @@ def print_patient_info(patient_info, print_num = 5):
 
 if __name__ == '__main__' :
     #return_patient_info_as_dict('D:/swkim/data/raw_wrist/14704464')
-    #p_info = get_data_as_dict()
-    #print_patient_info(p_info)
+    p_info = get_data_as_dict('C:\\Users\\jaejiniida\\Desktop\\sample\\patients\\23249834\\85427_20111117\\0002_19700101_000000')
+    print_patient_info(p_info)
     
 
     # 테스트
     test_module()
-    
+ 
