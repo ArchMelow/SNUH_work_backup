@@ -157,7 +157,7 @@ def resample(image, transform):
     :return: The transformed sitk image
     """
     reference_image = image
-    interpolator = sitk.sitkNearestNeighbor
+    interpolator = sitk.sitkLinear
     default_value = 0
     return sitk.Resample(image, reference_image, transform,
                          interpolator, default_value)
@@ -254,7 +254,8 @@ if __name__ == '__main__' :
                 [sg.Text('Sagittal 각도', expand_x= True, expand_y = True), sg.Input(key = 'sagittal_angle', size = (10,10), expand_x = True, expand_y = True, default_text = 0), sg.Column(sagittal_updown_button)],
                 [sg.Text('Coronal 각도', expand_x= True, expand_y = True), sg.Input(key = 'coronal_angle', size = (10,10), expand_x = True, expand_y = True, default_text= 0), sg.Column(coronal_updown_button)],
                 [sg.Button('설정 완료', expand_x= True, expand_y = True), sg.Button('값 초기화', expand_x= True, expand_y = True)],
-                [sg.Button('생성된 현재 이미지와 각도 저장하기', expand_x = True, expand_y = True)]
+                [sg.Button('생성된 현재 이미지와 각도 저장하기', expand_x = True, expand_y = True)],
+                [sg.Button('이미지 일괄 저장', expand_x= True, expand_y = True)]
             ])
         , canvas_column
         ]
@@ -266,8 +267,17 @@ if __name__ == '__main__' :
     canvas_column.expand(True, True)
     window.bind('<Configure>', "Configure")
 
+    sg.Popup('\'설정 완료\'를 누른 후 나오는 팝업 창 \'새로운 회전 방법을 시도합니까?\' 에서 먼저 각도 데이터를 얻기 위해 OK를 눌러 빠른 회전법으로 진행해 주세요.\n설정하신 특정 각도는 각 환자 폴더의 DRR 폴더 안 angles.txt 파일에 저장됩니다.\n모든 폴더들에 대해 최적의 x-ray 각도를 찾고 이미지를 저장하기 위해 \'일괄 저장\' 버튼을 눌러 자동으로 모든 이미지들을 좀 더 좋은 품질의 이미지들로 다시 저장합니다.\n', title = '도움말',)
+
     while True:
         event, values = window.read()
+
+        if event == '이미지 일괄 저장' :
+            #sg.Popup('진행 상황은 IDE나 현재 실행 중인 프롬프트를 통해 확인해 주세요.\n이 기능은 빠른 회전법을 이용해 얻은 최적의 각도를 읽어들여서 더 오래 걸리지만 비교적 좋은 품질의 이미지를 자동 생성합니다.\n그 동안 생성하셨던 모든 angles.txt에 대한 이미지가 자동 생성됩니다.')
+            # This might cause error since it is DIRECTORY-SENSITIVE.
+            sg.popup_no_buttons('먼저, 환자 번호 이름으로 된 디렉토리들이 그림과 같이 한 폴더에 모두 모아져 있는 구조인지 확인해 주세요.', title = '경고!', text_color= ('#FF0000'))
+            sg.Image('hier.txt')
+
 
         if event == '폴더 선택' :
             if not values['-FILE_PATH-'] :
@@ -410,8 +420,8 @@ if __name__ == '__main__' :
                     
                 else :
                     img_ax = rotate(img_3d, angle = theta_ax, axes = (0, 1), reshape = True)
-                    img_sag = rotate(img_ax, angle = theta_sg, axes = (0,2), reshape = True)
-                    img_cor = rotate(img_sag, angle = theta_cor, axes = (1,2), reshape = True)
+                    img_sag = rotate(img_ax, angle = theta_sg, axes = (2,1), reshape = True)
+                    img_cor = rotate(img_sag, angle = theta_cor, axes = (2,0), reshape = True)
 
                 rotate_end_time = time.time()
                 print(f'rotate elapsed time : {rotate_end_time-rotate_start_time : .5f}')
@@ -419,7 +429,10 @@ if __name__ == '__main__' :
 
             else :
                 print('Second rotation method.')
-            
+                
+                
+                # Labels ignored for now, since this operation takes too much time & masks are in 3d volume so we could adjust the labels to the best view of synth xray imgs.
+                '''
                 labels_arr = list()
 
                 for label_file in patient_data[values['_SELECTED_'][0]]['label_files'] :
@@ -438,19 +451,12 @@ if __name__ == '__main__' :
                 else :
                     sg.Popup('레이블 파일이 없습니다. 그대로 진행합니다.')
                     label_used_ap = np.zeros((512, 512)) # empty image array
-
-                
+                '''
+                label_used_ap = np.zeros((512, 512)) # empty image array
 
 
 
                 rotate_2nd_start = time.time()
-                
-                # Image shape requirement for the sitk reader is (512, 512).
-                # Instead of resizing them, we prompt user to resize them for themselves.
-
-                if patient_data[values['_SELECTED_'][0]]['image_shape'] != (512, 512) : 
-                    sg.Popup('Rotation Fail :\n이 회전 방법과 호환되는 DICOM 이미지 크기는 512 x 512 입니다.\n다른 환자번호로 시도하시거나 해당 환자 DICOM 파일들을 512 x 512로 변환 후 사용해주세요.')
-                    continue
 
                 try :
                     img_reader = sitk.ImageSeriesReader()
@@ -548,7 +554,7 @@ if __name__ == '__main__' :
 
             # If no data have been rotated before, OR if we have to display a different patient's x-ray, show only the current x-ray image.
             if not former_rotation or former_rotation['patient_id'] != values['_SELECTED_'][0] :
-                
+                  
                 fig = plt.figure()
                 ax = fig.subplots(ncols = 3)
 
@@ -644,7 +650,7 @@ if __name__ == '__main__' :
                         if starting_x>ending_x:
                             starting_x,ending_x= ending_x,starting_x
                         if ending_y-starting_y>1  and ending_x-starting_x>0:
-                            ch = sg.PopupOKCancel('이전에 저장된 사진에 덮어씌워집니다. 계속하시겠습니까?')
+                            ch = sg.PopupOKCancel('이전에 저장된 사진과 레이블에 덮어씌워집니다. 계속하시겠습니까?')
                             if ch not in [None, 'Cancel'] :
                                 lat_or_ap = sg.PopupOKCancel('Lateral 파일로 저장하면 OK, AP로 저장하면 Cancel을 눌러주세요.')
                                 if lat_or_ap == None :
@@ -662,6 +668,15 @@ if __name__ == '__main__' :
                                 plt.imshow(image, cmap = 'gray')
                                 plt.show()
                                 
+                                file_postfix = 'ap' if lat_or_ap == 'Cancel' else 'lat'
+                                data_to_write = [
+                                    f"Axial : {float(values['axial_angle'])}\n",
+                                    f"Sagittal : {float(values['sagittal_angle'])}\n",
+                                    f"Coronal : {float(values['coronal_angle'])}"
+                                ]
+
+                                with open(f"{folder_name}\\angles_{file_postfix}.txt", 'w') as file :
+                                    file.writelines(data_to_write)
                                 
                                 read_img = im.fromarray(image) # resize to 512 x 512
                                 #read_img = read_img.convert("L") # To grayscale non-float values array
