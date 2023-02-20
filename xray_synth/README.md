@@ -7,6 +7,8 @@
 
 + beta functionality to display AP X-Ray Label generated as nii.gz files by other softwares.
 
++ Users can now crop images when the generated x-rays have white or black corners unrelated to the actual image.
+
 
 ## Abstract
 This is a simple DRR generator programmed by PySimpleGUI. The main idea of this program to generate a satisfying quality of DRR is to :
