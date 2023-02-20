@@ -13,6 +13,7 @@ import pandas as pd
 import pydicom as pdcm
 from math import cos, sin
 import os
+import cv2
 import matplotlib.pyplot as plt
 import nibabel as nib
 from glob import glob
@@ -89,6 +90,28 @@ def MIP(labelArr, axis=1):
     return np.stack(labelArrMax, 0)
 
 
+def rescale_volume(image_series, interpolator, new_size, new_spacing) :
+    original_phys_size = [(sz - 1) * spc for sz, spc in zip(image_series.GetSize(), image_series.GetSpacing())]
+    new_physical_size = [(sz-1)*spc for sz,spc in zip(new_size, new_spacing)]
+
+    scale_tx = sitk.ScaleTransform(image_series.GetDimension(), [ops/nps for nps, ops in zip(new_physical_size, original_phys_size)])
+    rigid_tx = sitk.Euler3DTransform()
+    rigid_tx.SetMatrix(image_series.GetDirection())
+    rigid_tx.SetTranslation(image_series.GetOrigin())
+    #accomodate for non identity direction cosine matrix, ensure that scaling is
+    #along the image axes and not the canonical ones.
+    tx = sitk.CompositeTransform([rigid_tx, scale_tx, rigid_tx.GetInverse()])
+
+    #output image has the same origin and direction as the input, but is a
+    #scaled version of the content
+    return sitk.Resample(image_series,
+                         size = new_size,
+                         transform = tx,
+                         interpolator = interpolator,
+                         outputOrigin = image_series.GetOrigin(),
+                         outputDirection = image_series.GetDirection(),
+                         outputSpacing = new_spacing)
+
 
 # from https://stackoverflow.com/questions/56171643/simpleitk-rotation-of-volumetric-data-e-g-mri
 
@@ -134,7 +157,7 @@ def resample(image, transform):
     :return: The transformed sitk image
     """
     reference_image = image
-    interpolator = sitk.sitkLinear
+    interpolator = sitk.sitkNearestNeighbor
     default_value = 0
     return sitk.Resample(image, reference_image, transform,
                          interpolator, default_value)
@@ -321,9 +344,9 @@ if __name__ == '__main__' :
                 print(f'shape of the label read : {nib.load(label_file).get_fdata().shape}')
             '''
 
-            #popup_choice = sg.PopupOKCancel('새로운 회전 방법을 시도합니까?')
+            popup_choice = sg.PopupOKCancel('새로운 회전 방법을 시도합니까?')
             # Fix popup_choice to the new rotation method, as we don't use the second useless method for now.
-            popup_choice = 'OK'
+            #popup_choice = 'OK'
 
             # define rotation angles.
             
@@ -333,7 +356,32 @@ if __name__ == '__main__' :
                 theta_ax, theta_sg, theta_cor = map(float, (values['axial_angle'], values['sagittal_angle'], values['coronal_angle']))
 
 
-            if popup_choice in ['Cancel', None] :
+            if popup_choice == None :
+                window['설정 완료'].update(disabled= False)
+                continue
+
+            elif popup_choice == 'Cancel' :
+                
+                labels_arr = list()
+
+                for label_file in patient_data[values['_SELECTED_'][0]]['label_files'] :
+                    _label_ = nib.load(label_file).get_fdata()
+                    _label_ = np.flip(_label_, axis=2)
+                    _label_ = np.rot90(np.flip(_label_, axis=0), 3)
+                    labels_arr.append(np.where(_label_ != 0, 1, 0))
+
+
+                if len(labels_arr) > 0 :
+                    temp = np.stack(labels_arr, 0).astype(int)
+                    label_used_ap = MIP(temp, axis = 0)
+                    #label_used_lateral = MIP(temp, axis = 1)
+                    
+                # There are no labels found.
+                else :
+                    sg.Popup('레이블 파일이 없습니다. 그대로 진행합니다.')
+                    label_used_ap = np.zeros((512, 512)) # empty image array
+                
+                
                 get_slice_start = time.time()
                 ret = RE_3D.get_slices(patient_data[values['_SELECTED_'][0]])
                 get_slice_end = time.time()
@@ -380,10 +428,16 @@ if __name__ == '__main__' :
                     _label_ = np.rot90(np.flip(_label_, axis=0), 3)
                     labels_arr.append(np.where(_label_ != 0, 1, 0))
 
-                temp = np.stack(labels_arr, 0).astype(int)
 
-                label_used_ap = MIP(temp, axis = 0)
-                #label_used_lateral = MIP(temp, axis = 1)
+                if len(labels_arr) > 0 :
+                    temp = np.stack(labels_arr, 0).astype(int)
+                    label_used_ap = MIP(temp, axis = 0)
+                    #label_used_lateral = MIP(temp, axis = 1)
+                    
+                # There are no labels found.
+                else :
+                    sg.Popup('레이블 파일이 없습니다. 그대로 진행합니다.')
+                    label_used_ap = np.zeros((512, 512)) # empty image array
 
                 
 
@@ -412,7 +466,11 @@ if __name__ == '__main__' :
                     window['설정 완료'].update(disabled= False)
                     continue 
 
-                print(f"Loaded 3D img shape : {sitk_img_3d.GetSize()}")
+                sitk_img_size = sitk_img_3d.GetSize()
+                sitk_img_spacing = sitk_img_3d.GetSpacing()
+                print(f"Loaded 3D img shape : {sitk_img_size}")
+
+                #sitk_img_3d = rescale_volume(sitk_img_3d, sitk.sitkNearestNeighbor, (sitk_img_size[2], sitk_img_size[2], sitk_img_size[2]), sitk_img_spacing)
 
                 img_cor = rotation3d(image = sitk_img_3d, 
                                           theta_x = theta_cor, 
@@ -435,7 +493,8 @@ if __name__ == '__main__' :
 
             # method1: mean method
 
-            scaled_size = 512 if 512 > int(values['num_slices']) else int(values['num_slices'])
+            #scaled_size = 512 if 512 > int(values['num_slices']) else int(values['num_slices'])
+            scaled_size = int(values['num_slices'])
 
             xray1 = resize(np.mean(img_cor, axis = 0), (scaled_size, scaled_size))
 
@@ -545,7 +604,79 @@ if __name__ == '__main__' :
             former_rotation['label_ap'] = deepcopy(current_label)
 
             window['설정 완료'].update(disabled= False) # disable multiple clicks until the completion of a process.
-        
+            
+            # Capture Function copied from https://www.engineerknow.com/2022/12/crop-image-simple-app-using-cv2-numpy.html
+            
+            crop_ok = sg.PopupOKCancel('최종 이미지에 여백이 있을 경우 OK를 누르시고, 여백을 제외한 영역을 직접 선택하신 후 C (Capture)키를 눌러주세요.\n여백이 없으면 Cancel을 눌러주세요.')
+            
+            if crop_ok not in ['Cancel', None] :
+                xray_input = current_xray_gen[0] # view first x-ray
+                img_dup = np.copy(xray_input)
+                mouse_pressed = False
+                starting_x=starting_y=ending_x=ending_y= -1
+                
+                def mousebutton(event, x, y, flags, param):
+                    global img_dup , starting_x, starting_y, ending_x, ending_y, mouse_pressed
+                    #if left mouse button is pressed then takes the cursor position at starting_x and starting_y 
+                    if event == cv2.EVENT_LBUTTONDOWN:
+                        mouse_pressed= True
+                        starting_x,starting_y=x,y
+                        img_dup= np.copy(param)
+                
+                    elif event == cv2.EVENT_MOUSEMOVE:
+                        if mouse_pressed:
+                            img_dup = np.copy(param)
+                            cv2.rectangle(img_dup,(starting_x,starting_y),(x,y),(124,124,0),2)
+                    #final position of rectange if left mouse button is up then takes the cursor position at ending_x and ending_y 
+                    elif event == cv2.EVENT_LBUTTONUP:
+                        mouse_pressed=False
+                        ending_x,ending_y= x,y
+                        
+                cv2.namedWindow('image')
+                cv2.setMouseCallback('image',mousebutton, xray_input) #xray_input as param
+                while True:
+                    cv2.imshow('image',img_dup)
+                    k= cv2.waitKey(1)
+                    if k==ord('c'):
+                        #remove these condition and try to play weird output will give you idea why its done
+                        if starting_y>ending_y:
+                            starting_y,ending_y= ending_y,starting_y
+                        if starting_x>ending_x:
+                            starting_x,ending_x= ending_x,starting_x
+                        if ending_y-starting_y>1  and ending_x-starting_x>0:
+                            ch = sg.PopupOKCancel('이전에 저장된 사진에 덮어씌워집니다. 계속하시겠습니까?')
+                            if ch not in [None, 'Cancel'] :
+                                lat_or_ap = sg.PopupOKCancel('Lateral 파일로 저장하면 OK, AP로 저장하면 Cancel을 눌러주세요.')
+                                if lat_or_ap == None :
+                                    continue
+                                folder_name = dicom_file_dir + '\\DRR'
+                                if not os.path.exists(folder_name) :
+                                    os.mkdir(folder_name)
+                                img_name = 'drr_ap.png' if lat_or_ap == 'Cancel' else 'drr_lateral.png'  
+                                image = xray_input[starting_y:ending_y,starting_x:ending_x]
+                                img_dup= np.copy(image)
+                                
+                                
+                                image = (resize(image, (512, 512))*255).astype(np.uint8)
+                                
+                                plt.imshow(image, cmap = 'gray')
+                                plt.show()
+                                
+                                
+                                read_img = im.fromarray(image) # resize to 512 x 512
+                                #read_img = read_img.convert("L") # To grayscale non-float values array
+                                print(folder_name, img_name)
+                                read_img.save(folder_name + '\\' + img_name) 
+                                sg.Popup('저장을 완료했습니다. 캡처를 마치시려면 뷰어에서 키보드의 \'Q\'키를 눌러주세요.')
+                                
+                        elif k == 27:
+                            break
+                    elif k == ord('q') :
+                        break
+                cv2.destroyAllWindows()
+
+                
+
 
         if event == 'axial_incr' :
             axial_val = float(values['axial_angle'])
