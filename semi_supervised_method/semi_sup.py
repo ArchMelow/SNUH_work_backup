@@ -1,3 +1,5 @@
+# code written by Jaejin Lee (Sogang Univ. 20181671), with few references
+
 import model.backbone.resnet as resnet
 from model.backbone.xception import xception
 
